@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#090d12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>IronLog</title>
+  <!-- Git test edit -->
+
+  <!-- Prevent flash of incorrect theme on initial paint -->
+  <script>
+    (function() {
+      try {
+        var raw = localStorage.getItem('ironlog_state') || localStorage.getItem('ironlog.v1');
+        var theme = 'system';
+        var accent = 'orange';
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (parsed && parsed.settings) {
+            if (parsed.settings.theme) theme = parsed.settings.theme;
+            if (parsed.settings.accent) accent = parsed.settings.accent;
+          }
+        }
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-accent', accent);
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+  <div id="app-root"></div>
+
+  <!-- Main ES Module Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+/* ==========================================================================
+   IronLog Layouts (Mobile Tab Bar & Tablet Sidebar Master/Detail)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Mobile App Layout (Default)
+   -------------------------------------------------------------------------- */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Sidebar is hidden on phones */
+.app-sidebar {
+  display: none;
+}
+
+/* Mobile Bottom Tab Bar */
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  height: calc(56px + var(--sab));
+  padding-bottom: var(--sab);
+  background-color: var(--color-tab-bar);
+  border-top: 1px solid var(--color-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: center;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.tab-item:active {
+  transform: scale(0.92);
+}
+
+.tab-item.active {
+  color: var(--color-accent);
+}
+
+.tab-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Prominent Center "Start Workout" Button on Mobile */
+.tab-item.center-action {
+  position: relative;
+}
+
+.tab-center-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px var(--color-accent-glow);
+  transform: translateY(-8px);
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
+  border: 3px solid var(--color-bg);
+}
+
+.tab-center-btn:active {
+  transform: translateY(-6px) scale(0.92);
+}
+
+.tab-center-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Tablet & Desktop Layout (>= 860px)
+   -------------------------------------------------------------------------- */
+@media (min-width: 860px) {
+  .app-container {
+    flex-direction: row;
+  }
+
+  /* Hide bottom tab bar on tablet/desktop */
+  .tab-bar {
+    display: none;
+  }
+
+  /* Show responsive sidebar */
+  .app-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 260px;
+    height: 100%;
+    background-color: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+    padding: var(--space-4);
+    flex-shrink: 0;
+    z-index: 30;
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-2) var(--space-6) var(--space-2);
+    border-bottom: 1px solid var(--color-border-subtle);
+    margin-bottom: var(--space-4);
+  }
+
+  .brand-logo-icon {
+    width: 38px;
+    height: 38px;
+    background-color: var(--color-accent);
+    color: #ffffff;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px var(--color-accent-glow);
+  }
+
+  .brand-title {
+    font-size: var(--text-lg);
+    font-weight: 800;
+    color: var(--color-text);
+    letter-spacing: -0.02em;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    flex: 1;
+  }
+
+  .sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+    font-weight: 600;
+    font-size: var(--text-base);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+  }
+
+  .sidebar-link:hover {
+    background-color: var(--color-surface-hover);
+    color: var(--color-text);
+  }
+
+  .sidebar-link.active {
+    background-color: var(--color-accent-subtle);
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+
+  .sidebar-link svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .sidebar-footer {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  /* Main content on tablet */
+  .main-content {
+    padding-bottom: var(--space-6);
+  }
+
+  /* Two-Column Master/Detail Layout for History & Exercises */
+  .master-detail-view {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .master-column {
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+    height: 100%;
+  }
+
+  .detail-column {
+    overflow-y: auto;
+    height: 100%;
+    padding: var(--space-6);
+  }
+}
+
+/* Page Container */
+.page-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (min-width: 860px) {
+  .page-container {
+    padding: var(--space-6);
+    gap: var(--space-6);
+  }
+}
