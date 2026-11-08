@@ -1,6 +1,6 @@
 /**
  * IronLog Settings Page
- * Customization for Units, Weekly Goal, Themes, Accents, Audio/Haptics, and Backup Export/Import.
+ * Preferences for Units, Weekly Goal, Themes, Accents, Haptics, Screen Awake, and Backup Export/Import.
  */
 
 import { Storage } from '../storage.js';
@@ -10,8 +10,6 @@ import { ACCENTS, THEMES } from '../config.js';
 import { getIcon } from '../icons.js';
 
 export function renderSettings(container) {
-  const settings = Storage.getSettings();
-
   function updateView() {
     const s = Storage.getSettings();
 
@@ -31,7 +29,7 @@ export function renderSettings(container) {
           <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border-subtle);">
             <div>
               <div style="font-weight: 700; font-size: var(--text-base);">Weight Unit</div>
-              <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Choose your default plate measurement</div>
+              <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Choose your default measurement</div>
             </div>
             <div style="display: flex; background-color: var(--color-surface-elevated); padding: 3px; border-radius: var(--radius-lg); border: 1px solid var(--color-border);">
               <button class="btn btn-sm btn-unit-toggle ${s.unit === 'kg' ? 'btn-primary' : 'btn-ghost'}" data-unit="kg">kg</button>
@@ -40,31 +38,15 @@ export function renderSettings(container) {
           </div>
 
           <!-- Weekly Goal -->
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle);">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-3);">
             <div>
               <div style="font-weight: 700; font-size: var(--text-base);">Weekly Target</div>
               <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Target workouts per week</div>
             </div>
-            <select id="setting-weekly-goal" style="font-weight: 700; padding: 6px 12px;">
-              ${[2, 3, 4, 5, 6, 7].map(num => `
+            <select id="setting-weekly-goal" style="font-weight: 700;">
+              ${[1, 2, 3, 4, 5, 6, 7].map(num => `
                 <option value="${num}" ${s.weeklyGoal === num ? 'selected' : ''}>${num} days / week</option>
               `).join('')}
-            </select>
-          </div>
-
-          <!-- Default Rest Timer -->
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-3);">
-            <div>
-              <div style="font-weight: 700; font-size: var(--text-base);">Default Rest Timer</div>
-              <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Auto countdown after set completion</div>
-            </div>
-            <select id="setting-rest-timer" style="font-weight: 700; padding: 6px 12px;">
-              <option value="30" ${s.restTimerSeconds === 30 ? 'selected' : ''}>30 sec</option>
-              <option value="60" ${s.restTimerSeconds === 60 ? 'selected' : ''}>60 sec (1m)</option>
-              <option value="90" ${s.restTimerSeconds === 90 ? 'selected' : ''}>90 sec (1.5m)</option>
-              <option value="120" ${s.restTimerSeconds === 120 ? 'selected' : ''}>120 sec (2m)</option>
-              <option value="180" ${s.restTimerSeconds === 180 ? 'selected' : ''}>180 sec (3m)</option>
-              <option value="240" ${s.restTimerSeconds === 240 ? 'selected' : ''}>240 sec (4m)</option>
             </select>
           </div>
         </div>
@@ -108,14 +90,6 @@ export function renderSettings(container) {
               <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Tactile clicks on set completion and PRs</div>
             </div>
             <input type="checkbox" id="setting-haptics" ${s.hapticsEnabled !== false ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-accent);" />
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle);">
-            <div>
-              <div style="font-weight: 700; font-size: var(--text-base);">Audio Beeps</div>
-              <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Rest timer alert chime</div>
-            </div>
-            <input type="checkbox" id="setting-sound" ${s.soundEnabled !== false ? 'checked' : ''} style="width: 22px; height: 22px; accent-color: var(--color-accent);" />
           </div>
 
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-3);">
@@ -189,15 +163,6 @@ export function renderSettings(container) {
       };
     }
 
-    // Rest Timer
-    const selectTimer = container.querySelector('#setting-rest-timer');
-    if (selectTimer) {
-      selectTimer.onchange = (e) => {
-        Storage.updateSettings({ restTimerSeconds: parseInt(e.target.value, 10) });
-        Native.hapticLight();
-      };
-    }
-
     // Theme Choice
     container.querySelectorAll('.btn-theme-choice').forEach(btn => {
       btn.onclick = () => {
@@ -223,14 +188,6 @@ export function renderSettings(container) {
     if (checkHaptics) {
       checkHaptics.onchange = (e) => {
         Storage.updateSettings({ hapticsEnabled: e.target.checked });
-        Native.hapticLight();
-      };
-    }
-
-    const checkSound = container.querySelector('#setting-sound');
-    if (checkSound) {
-      checkSound.onchange = (e) => {
-        Storage.updateSettings({ soundEnabled: e.target.checked });
         Native.hapticLight();
       };
     }

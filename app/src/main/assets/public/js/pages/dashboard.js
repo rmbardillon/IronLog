@@ -1,6 +1,6 @@
 /**
  * IronLog Dashboard Page
- * Today's workout card, weekly calendar strip, streak flame, quick-start, and body heat map.
+ * Today's session card, weekly calendar strip, streak flame, quick-start, and body heat map.
  */
 
 import { Storage } from '../storage.js';
@@ -14,21 +14,21 @@ export function renderDashboard(container) {
   const draft = Storage.getDraft();
   const unit = settings.unit || 'kg';
 
-  // 1. Calculate Active Streak
+  // 1. Streak Calculation
   const streak = calculateStreak(workouts);
 
-  // 2. Weekly Calendar Days (Mon - Sun of current week)
+  // 2. Weekly Calendar Days (Mon - Sun)
   const weekDays = getWeekDays(workouts);
-  const completedThisWeek = weekDays.filter(d => d.completed).length;
+  const completedDaysThisWeek = weekDays.filter(d => d.completed).length;
+  const totalSessionsThisWeek = weekDays.reduce((acc, d) => acc + d.sessionCount, 0);
   const weeklyGoal = settings.weeklyGoal || 4;
 
-  // 3. Body Heat Map volume calculations (Chest, Back, Shoulders, Legs, Arms, Core)
+  // 3. Body Heat Map volume (excl Warmup)
   const muscleTrainedMap = getTrainedMusclesThisWeek(workouts);
 
   // 4. Quick-start recent templates
   const recentTemplates = getRecentTemplates(workouts);
 
-  // Metric stats
   const totalVolumeThisWeek = calculateWeeklyVolume(workouts);
   const totalWorkouts = workouts.length;
 
@@ -42,7 +42,6 @@ export function renderDashboard(container) {
           <h1 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.025em; line-height: 1.2;">Dashboard</h1>
         </div>
 
-        <!-- Streak Badge -->
         <div class="streak-badge">
           <span class="streak-flame-icon">${getIcon('flame', 'w-5 h-5')}</span>
           <span>${streak} Day Streak</span>
@@ -53,7 +52,7 @@ export function renderDashboard(container) {
       <div class="card" style="padding: var(--space-3) var(--space-4);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
           <div style="font-size: var(--text-sm); font-weight: 700;">Weekly Goal</div>
-          <div style="font-size: var(--text-xs); font-weight: 700; color: var(--color-accent);">${completedThisWeek} / ${weeklyGoal} Workouts</div>
+          <div style="font-size: var(--text-xs); font-weight: 700; color: var(--color-accent);">${completedDaysThisWeek} / ${weeklyGoal} Days Trained (${totalSessionsThisWeek} ${totalSessionsThisWeek === 1 ? 'Session' : 'Sessions'})</div>
         </div>
         <div class="week-strip">
           ${weekDays.map(d => `
@@ -72,13 +71,13 @@ export function renderDashboard(container) {
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3);">
             <div>
               <span class="badge badge-accent" style="margin-bottom: 6px;">Workout In Progress</span>
-              <h2 style="font-size: var(--text-lg); font-weight: 800;">${draft.title || 'Current Workout'}</h2>
+              <h2 style="font-size: var(--text-lg); font-weight: 800;">${escapeHtml(draft.title || 'Current Session')}</h2>
               <div style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 2px;">
                 ${draft.exercises?.length || 0} exercises added
               </div>
             </div>
             <button id="dash-btn-resume" class="btn btn-primary">
-              Resume ${getIcon('play', 'w-4 h-4')}
+              Resume Session ${getIcon('play', 'w-4 h-4')}
             </button>
           </div>
         </div>
@@ -87,10 +86,10 @@ export function renderDashboard(container) {
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
               <h2 style="font-size: var(--text-lg); font-weight: 800;">Ready to train?</h2>
-              <p style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 4px;">Log sets, track rest intervals and break personal records.</p>
+              <p style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 4px;">Log sets, track Time In & Out, and build strength records.</p>
             </div>
             <button id="dash-btn-start-empty" class="btn btn-primary" style="flex-shrink: 0;">
-              ${getIcon('plus', 'w-5 h-5')} Start Workout
+              ${getIcon('plus', 'w-5 h-5')} Start Session
             </button>
           </div>
         </div>
@@ -104,12 +103,12 @@ export function renderDashboard(container) {
             ${recentTemplates.map((t, idx) => `
               <div class="card card-clickable quick-template-card" data-idx="${idx}" style="display: flex; justify-content: space-between; align-items: center;">
                 <div>
-                  <div style="font-weight: 700; font-size: var(--text-base);">${t.title}</div>
+                  <div style="font-weight: 700; font-size: var(--text-base);">${escapeHtml(t.title)}</div>
                   <div style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 4px;">
                     ${t.exerciseCount} exercises • ${t.dateAgo}
                   </div>
                 </div>
-                <div style="color: var(--color-accent);">${getIcon('chevronRight', 'w-5 h-5')}</div>
+                <div style="color: var(--color-accent);">${getIcon('play', 'w-5 h-5')}</div>
               </div>
             `).join('')}
           </div>
@@ -121,9 +120,9 @@ export function renderDashboard(container) {
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
           <div>
             <div style="font-size: var(--text-md); font-weight: 700;">Muscle Heat Map</div>
-            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Targeted body parts this week</div>
+            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Working volume this week (warmups excluded)</div>
           </div>
-          <span class="badge">${completedThisWeek} Sessions</span>
+          <span class="badge">${totalSessionsThisWeek} ${totalSessionsThisWeek === 1 ? 'Session' : 'Sessions'}</span>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-2);">
@@ -146,7 +145,7 @@ export function renderDashboard(container) {
       <!-- Quick Metrics Summary -->
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);">
         <div class="card" style="text-align: center; padding: var(--space-3);">
-          <div style="font-size: var(--text-xs); color: var(--color-text-secondary); font-weight: 600;">Workouts</div>
+          <div style="font-size: var(--text-xs); color: var(--color-text-secondary); font-weight: 600;">Sessions</div>
           <div style="font-size: var(--text-xl); font-weight: 800; color: var(--color-text); margin-top: 2px;">${totalWorkouts}</div>
         </div>
         <div class="card" style="text-align: center; padding: var(--space-3);">
@@ -176,6 +175,7 @@ export function renderDashboard(container) {
     btnStart.onclick = () => {
       Native.hapticLight();
       Workout.startWorkout();
+      Workout.setTimeIn();
       window.location.hash = '#logger';
     };
   }
@@ -186,21 +186,20 @@ export function renderDashboard(container) {
       const tmpl = recentTemplates[idx];
       if (tmpl && tmpl.workoutRef) {
         Native.hapticLight();
-        // Start workout cloning the previous exercise structure
         Workout.startWorkout({
           title: tmpl.title,
           exercises: tmpl.workoutRef.exercises.map(e => ({
             exerciseId: e.exerciseId,
             exerciseName: e.exerciseName,
             sets: e.sets.map(s => ({
-              type: s.type || 'N',
+              type: s.type || 'Working',
               weight: s.weight,
               reps: s.reps,
-              completed: false,
-              prevHint: `${s.weight} × ${s.reps}`
+              completed: false
             }))
           }))
         });
+        Workout.setTimeIn();
         window.location.hash = '#logger';
       }
     };
@@ -210,20 +209,15 @@ export function renderDashboard(container) {
 function calculateStreak(workouts) {
   if (!workouts || workouts.length === 0) return 0;
   const sortedDates = Array.from(new Set(
-    workouts.map(w => new Date(w.date).toDateString())
-  )).map(d => new Date(d)).sort((a, b) => b - a);
+    workouts.map(w => toLocalMidnight(w.date || w.timeIn).getTime())
+  )).sort((a, b) => b - a);
 
   let streak = 0;
   const now = new Date();
-  let currentCheck = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  // If trained today or yesterday, streak is live
-  const firstWorkout = sortedDates[0];
-  const diffHours = (currentCheck - firstWorkout) / (1000 * 3600);
-  if (diffHours > 48) return 0;
+  let currentCheck = toLocalMidnight(now).getTime();
 
   for (const date of sortedDates) {
-    const diffDays = Math.round((currentCheck - date) / (1000 * 86400));
+    const diffDays = Math.round((currentCheck - date) / 86400000);
     if (diffDays <= 1) {
       streak++;
       currentCheck = date;
@@ -234,9 +228,20 @@ function calculateStreak(workouts) {
   return Math.max(1, streak);
 }
 
+function toLocalMidnight(dStr) {
+  const d = new Date(dStr);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function calendarDaysDiff(now, dateStr) {
+  const m1 = toLocalMidnight(now);
+  const m2 = toLocalMidnight(dateStr);
+  return Math.round((m1.getTime() - m2.getTime()) / 86400000);
+}
+
 function getWeekDays(workouts) {
   const now = new Date();
-  const currentDayOfWeek = now.getDay(); // 0 is Sunday
+  const currentDayOfWeek = now.getDay();
   const mondayOffset = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
   const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
 
@@ -245,14 +250,15 @@ function getWeekDays(workouts) {
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
-    const dateStr = d.toDateString();
-    const hasWorkout = workouts.some(w => new Date(w.date).toDateString() === dateStr);
-    const isToday = d.toDateString() === now.toDateString();
+    const dTime = toLocalMidnight(d).getTime();
+    const daySessions = workouts.filter(w => toLocalMidnight(w.date || w.timeIn).getTime() === dTime);
+    const isToday = toLocalMidnight(now).getTime() === dTime;
 
     weekDays.push({
       name: dayNames[i],
       dayNum: d.getDate(),
-      completed: hasWorkout,
+      completed: daySessions.length > 0,
+      sessionCount: daySessions.length,
       isToday
     });
   }
@@ -264,9 +270,12 @@ function getTrainedMusclesThisWeek(workouts) {
   const oneWeekAgo = Date.now() - 7 * 86400000;
 
   workouts.forEach(w => {
-    if (new Date(w.date).getTime() < oneWeekAgo) return;
+    if (new Date(w.date || w.timeIn).getTime() < oneWeekAgo) return;
     (w.exercises || []).forEach(e => {
-      const vol = (e.sets || []).reduce((acc, s) => acc + (s.completed ? (parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0) : 0), 0);
+      const vol = (e.sets || []).reduce((acc, s) => {
+        if (!s.completed || s.type === 'Warmup') return acc;
+        return acc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0));
+      }, 0);
       const name = (e.exerciseName || '').toLowerCase();
       if (name.includes('bench') || name.includes('chest') || name.includes('dip')) map.chest += vol;
       else if (name.includes('squat') || name.includes('leg') || name.includes('calf') || name.includes('lunge')) map.legs += vol;
@@ -283,10 +292,10 @@ function calculateWeeklyVolume(workouts) {
   const oneWeekAgo = Date.now() - 7 * 86400000;
   let total = 0;
   workouts.forEach(w => {
-    if (new Date(w.date).getTime() < oneWeekAgo) return;
+    if (new Date(w.date || w.timeIn).getTime() < oneWeekAgo) return;
     (w.exercises || []).forEach(e => {
       (e.sets || []).forEach(s => {
-        if (s.completed) total += (parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0);
+        if (s.completed && s.type !== 'Warmup') total += (parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0);
       });
     });
   });
@@ -295,11 +304,11 @@ function calculateWeeklyVolume(workouts) {
 
 function getRecentTemplates(workouts) {
   const uniqueTitles = new Map();
+  const now = new Date();
   for (const w of workouts) {
     if (uniqueTitles.size >= 3) break;
     if (!uniqueTitles.has(w.title)) {
-      const d = new Date(w.date);
-      const daysAgo = Math.round((Date.now() - d.getTime()) / 86400000);
+      const daysAgo = calendarDaysDiff(now, w.date || w.timeIn);
       uniqueTitles.set(w.title, {
         title: w.title,
         exerciseCount: w.exercises?.length || 0,
@@ -309,4 +318,9 @@ function getRecentTemplates(workouts) {
     }
   }
   return Array.from(uniqueTitles.values());
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

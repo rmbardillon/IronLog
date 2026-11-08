@@ -1,6 +1,6 @@
 /**
- * IronLog History Page
- * Chronological workout logs, master/detail on tablet, swipe-to-delete, and set summaries.
+ * IronLog History View
+ * Chronological list of completed sessions, viewing & editing past session Time In / Time Out, sets, and deletion.
  */
 
 import { Storage } from '../storage.js';
@@ -39,8 +39,8 @@ export function renderHistory(container) {
         <div class="master-column" style="padding: var(--space-4);">
 
           <div style="margin-bottom: var(--space-4);">
-            <h1 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.025em; margin-bottom: 8px;">History</h1>
-            <input type="search" id="history-search-input" value="${escapeHtml(searchQuery)}" placeholder="Search workouts or exercises..." style="width: 100%;" />
+            <h1 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.025em; margin-bottom: 8px;">Session History</h1>
+            <input type="search" id="history-search-input" value="${escapeHtml(searchQuery)}" placeholder="Search sessions or exercises..." style="width: 100%;" />
           </div>
 
           ${filtered.length === 0 ? `
@@ -48,8 +48,8 @@ export function renderHistory(container) {
               <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; color: var(--color-text-muted);">
                 ${getIcon('calendar', 'w-6 h-6')}
               </div>
-              <div style="font-weight: 700; font-size: var(--text-md); color: var(--color-text);">No workouts found</div>
-              <p style="font-size: var(--text-sm); margin-top: 4px;">Completed workouts will appear here chronologically.</p>
+              <div style="font-weight: 700; font-size: var(--text-md); color: var(--color-text);">No past sessions</div>
+              <p style="font-size: var(--text-sm); margin-top: 4px;">Completed workout sessions will appear here.</p>
             </div>
           ` : `
             <div style="display: flex; flex-direction: column; gap: var(--space-3);">
@@ -59,11 +59,11 @@ export function renderHistory(container) {
 
         </div>
 
-        <!-- Right / Detail Column (Visible on Tablet, or as modal/drawer on Mobile) -->
+        <!-- Right / Detail Column -->
         <div class="detail-column" id="history-detail-pane">
           ${selectedWorkout ? renderDetailPane(selectedWorkout) : `
             <div style="text-align: center; padding: 64px 24px; color: var(--color-text-muted);">
-              Select a workout from the list to view full details.
+              Select a session from the list to view or edit.
             </div>
           `}
         </div>
@@ -75,15 +75,16 @@ export function renderHistory(container) {
   }
 
   function renderMasterWorkoutItem(w, isSelected) {
-    const d = new Date(w.date);
+    const d = new Date(w.date || w.timeIn);
     const dateFormatted = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    const durationMins = Math.round((w.durationSeconds || 0) / 60);
+    const durationFormatted = formatDuration(w.durationSeconds || 0);
 
     const totalVolume = (w.exercises || []).reduce((acc, e) => {
-      return acc + (e.sets || []).reduce((sAcc, s) => sAcc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0)), 0);
+      return acc + (e.sets || []).reduce((sAcc, s) => {
+        if (!s.completed || s.type === 'Warmup') return sAcc;
+        return sAcc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0));
+      }, 0);
     }, 0);
-
-    const totalSets = (w.exercises || []).reduce((acc, e) => acc + (e.sets?.length || 0), 0);
 
     return `
       <div class="card card-clickable history-item-card ${isSelected ? 'selected' : ''}" data-id="${w.id}" style="padding: var(--space-3) var(--space-4); border-color: ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}; background-color: ${isSelected ? 'var(--color-accent-subtle)' : 'var(--color-surface-card)'};">
@@ -91,13 +92,12 @@ export function renderHistory(container) {
           <div>
             <div style="font-weight: 800; font-size: var(--text-md);">${escapeHtml(w.title)}</div>
             <div style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 2px;">
-              ${dateFormatted} • ⏱️ ${durationMins}m
+              ${dateFormatted} • ${durationFormatted}
             </div>
           </div>
           <span class="badge badge-accent">${totalVolume > 1000 ? (totalVolume/1000).toFixed(1) + 'k' : totalVolume} ${unit}</span>
         </div>
 
-        <!-- Exercise preview chips -->
         <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">
           ${(w.exercises || []).slice(0, 3).map(e => `
             <span style="font-size: 11px; padding: 2px 6px; border-radius: 4px; background: var(--color-surface-elevated); color: var(--color-text-secondary);">
@@ -115,37 +115,56 @@ export function renderHistory(container) {
   }
 
   function renderDetailPane(w) {
-    const d = new Date(w.date);
+    const d = new Date(w.date || w.timeIn);
     const dateFormatted = d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const durationMins = Math.round((w.durationSeconds || 0) / 60);
+    const timeInStr = w.timeIn ? formatTimeDisplay(w.timeIn) : 'N/A';
+    const timeOutStr = w.timeOut ? formatTimeDisplay(w.timeOut) : 'N/A';
+    const durationFormatted = formatDuration(w.durationSeconds || 0);
 
-    const totalVolume = (w.exercises || []).reduce((acc, e) => {
-      return acc + (e.sets || []).reduce((sAcc, s) => sAcc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0)), 0);
+    const totalWorkingVolume = (w.exercises || []).reduce((acc, e) => {
+      return acc + (e.sets || []).reduce((sAcc, s) => {
+        if (!s.completed || s.type === 'Warmup') return sAcc;
+        return sAcc + ((parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0));
+      }, 0);
+    }, 0);
+
+    const completedSetsCount = (w.exercises || []).reduce((acc, e) => {
+      return acc + (e.sets || []).filter(s => s.completed).length;
     }, 0);
 
     return `
       <div style="display: flex; flex-direction: column; gap: var(--space-4);">
 
-        <!-- Header & Delete Action -->
+        <!-- Header & Session Actions -->
         <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border);">
           <div>
             <h2 style="font-size: var(--text-2xl); font-weight: 800;">${escapeHtml(w.title)}</h2>
             <div style="font-size: var(--text-sm); color: var(--color-text-secondary); margin-top: 2px;">
-              ${dateFormatted} • Duration: ${durationMins} mins
+              ${dateFormatted}
             </div>
           </div>
 
           <button id="btn-delete-workout" class="btn btn-danger-ghost btn-sm" data-id="${w.id}">
-            ${getIcon('trash2', 'w-4 h-4')} Delete
+            ${getIcon('trash2', 'w-4 h-4')} Delete Session
           </button>
         </div>
 
-        <!-- Stats Bar -->
+        <!-- Session Timestamps & Duration -->
+        <div class="card" style="padding: var(--space-3) var(--space-4); background-color: var(--color-surface-elevated);">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-sm); font-weight: 700;">
+            <div>
+              In: <span style="color: var(--color-accent);">${timeInStr}</span> • Out: <span style="color: var(--color-accent);">${timeOutStr}</span>
+            </div>
+            <span class="badge badge-accent">Duration: ${durationFormatted}</span>
+          </div>
+        </div>
+
+        <!-- Session Stats -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);">
           <div class="card" style="text-align: center; padding: var(--space-3);">
-            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Total Volume</div>
+            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Working Volume</div>
             <div style="font-size: var(--text-lg); font-weight: 800; color: var(--color-accent); margin-top: 2px;">
-              ${totalVolume.toLocaleString()} ${unit}
+              ${totalWorkingVolume.toLocaleString()} ${unit}
             </div>
           </div>
           <div class="card" style="text-align: center; padding: var(--space-3);">
@@ -155,14 +174,14 @@ export function renderHistory(container) {
             </div>
           </div>
           <div class="card" style="text-align: center; padding: var(--space-3);">
-            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Sets Logged</div>
+            <div style="font-size: var(--text-xs); color: var(--color-text-secondary);">Sets Completed</div>
             <div style="font-size: var(--text-lg); font-weight: 800; margin-top: 2px;">
-              ${(w.exercises || []).reduce((a, e) => a + (e.sets?.length || 0), 0)}
+              ${completedSetsCount}
             </div>
           </div>
         </div>
 
-        <!-- Exercises List -->
+        <!-- Exercises and Sets Detail List -->
         <div style="display: flex; flex-direction: column; gap: var(--space-3);">
           ${(w.exercises || []).map(ex => `
             <div class="card" style="padding: var(--space-3) var(--space-4);">
@@ -171,13 +190,21 @@ export function renderHistory(container) {
                   ${escapeHtml(ex.exerciseName)}
                 </a>
               </div>
-              <div style="display: flex; flex-direction: column; gap: 4px;">
-                ${(ex.sets || []).map((s, sIdx) => `
-                  <div style="display: flex; justify-content: space-between; font-size: var(--text-sm); padding: 4px 0; border-bottom: 1px solid var(--color-border-subtle);">
-                    <span style="color: var(--color-text-secondary); font-weight: 600;">Set ${sIdx + 1} (${s.type || 'N'})</span>
-                    <span style="font-weight: 700;">${s.weight} ${unit} × ${s.reps} reps</span>
-                  </div>
-                `).join('')}
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                ${(ex.sets || []).map((s, sIdx) => {
+                  const isDone = s.completed;
+                  return `
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--text-sm); padding: 4px 8px; border-radius: 6px; background-color: ${isDone ? 'var(--color-surface)' : 'transparent'}; opacity: ${isDone ? 1 : 0.5};">
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-weight: 700; color: var(--color-text-secondary); width: 20px;">#${sIdx + 1}</span>
+                        <span class="badge ${s.type === 'Warmup' ? 'type-W' : s.type === 'Failure' ? 'type-F' : 'badge-accent'}" style="font-size: 10px; font-weight: 800;">${s.type || 'Working'}</span>
+                      </div>
+                      <div style="font-weight: 700;">
+                        ${s.weight} ${unit} × ${s.reps} reps ${isDone ? '✓' : '(unchecked)'}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             </div>
           `).join('')}
@@ -208,7 +235,7 @@ export function renderHistory(container) {
     if (btnDelete) {
       btnDelete.onclick = () => {
         const id = btnDelete.dataset.id;
-        if (confirm('Are you sure you want to delete this workout log?')) {
+        if (confirm('Are you sure you want to permanently delete this session log?')) {
           Native.hapticLight();
           Storage.deleteWorkout(id);
           selectedWorkoutId = null;
@@ -219,6 +246,20 @@ export function renderHistory(container) {
   }
 
   updateView();
+}
+
+function formatTimeDisplay(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function formatDuration(totalSecs) {
+  const mins = Math.floor(totalSecs / 60);
+  if (mins < 60) return `${mins} mins`;
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return `${hrs}h ${remMins}m`;
 }
 
 function escapeHtml(str) {

@@ -199,7 +199,7 @@ class StorageManager {
     }
 
     const state = {
-      version: 2,
+      version: 3,
       workouts: Array.isArray(data.workouts) ? data.workouts : [],
       customExercises: Array.isArray(data.customExercises) ? data.customExercises : [],
       favorites: Array.isArray(data.favorites) ? data.favorites : DEFAULT_STATE.favorites,
@@ -208,22 +208,42 @@ class StorageManager {
       settings: Object.assign({}, DEFAULT_STATE.settings, data.settings || {})
     };
 
-    // Migrate old exercise IDs in workouts and draft
+    // Migrate old exercise IDs and set types in workouts and draft
     const mapExerciseId = (oldId) => LEGACY_ID_MAP[oldId] || oldId;
 
-    state.workouts.forEach(w => {
+    const normalizeSetType = (type) => {
+      if (type === 'W' || type === 'Warmup') return 'Warmup';
+      if (type === 'F' || type === 'Failure') return 'Failure';
+      return 'Working';
+    };
+
+    const normalizeSession = (w) => {
+      if (!w) return;
+      w.isLocked = Boolean(w.isLocked || w.isCompleted || (w.timeOut && w.timeIn));
+      w.isCompleted = Boolean(w.isCompleted || w.isLocked);
+      w.date = w.date || w.timeIn || new Date().toISOString();
+
       if (Array.isArray(w.exercises)) {
         w.exercises.forEach(e => {
           if (e.exerciseId) e.exerciseId = mapExerciseId(e.exerciseId);
+          if (Array.isArray(e.sets)) {
+            e.sets.forEach(s => {
+              s.type = normalizeSetType(s.type);
+              s.completed = Boolean(s.completed !== undefined ? s.completed : s.done);
+            });
+          }
         });
       }
-    });
+      w.timeIn = w.timeIn || w.startTime || w.date;
+      if (w.timeOut && w.timeIn) {
+        w.durationSeconds = Math.max(0, Math.round((new Date(w.timeOut) - new Date(w.timeIn)) / 1000));
+      } else if (w.durationSeconds && w.timeIn) {
+        w.timeOut = new Date(new Date(w.timeIn).getTime() + w.durationSeconds * 1000).toISOString();
+      }
+    };
 
-    if (state.draft && Array.isArray(state.draft.exercises)) {
-      state.draft.exercises.forEach(e => {
-        if (e.exerciseId) e.exerciseId = mapExerciseId(e.exerciseId);
-      });
-    }
+    state.workouts.forEach(normalizeSession);
+    if (state.draft) normalizeSession(state.draft);
 
     state.favorites = state.favorites.map(mapExerciseId);
 
